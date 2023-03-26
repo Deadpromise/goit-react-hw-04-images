@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import PropTypes from 'prop-types';
 import { AppContainer } from './App.styled';
-import Searchbar from './Searchbar/Searchbar';
+import { Searchbar } from './Searchbar/Searchbar';
 import { Loader } from './Loader/Loader';
 import getImgs from 'services/pixabay-api';
 import { ImageGallery } from './ImageGallery/ImageGallery';
@@ -43,6 +43,9 @@ export default class App extends Component {
   };
   onFormSubmit = searchQuery => {
     // this.setState({ status: Status.RESOLVED });
+    if (searchQuery === this.state.searchQuery) {
+      return;
+    }
     this.setState({ page: 1 });
     this.setState({ status: Status.PENDING });
 
@@ -63,7 +66,7 @@ export default class App extends Component {
     const currentQuery = this.state.searchQuery;
     const prevPage = prevState.page;
     const currentPage = this.state.page;
-    if (prevPage !== currentPage) {
+    if (prevPage !== currentPage || prevQuery !== currentQuery) {
       this.setState({ status: Status.PENDING });
       getImgs(currentQuery, currentPage)
         .then(result => {

@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState } from 'react';
 import Notiflix from 'notiflix';
 import PropTypes from 'prop-types';
 import {
@@ -9,46 +9,41 @@ import {
   SearchInput,
 } from './Searchbar.styled';
 
-export default class Searchbar extends Component {
-  static propTypes = {
-    state: PropTypes.shape({
-      searchQuery: PropTypes.string.isRequired,
-    }),
-    onSubmit: PropTypes.func.isRequired,
+export const Searchbar = ({ onSubmit }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const getInputData = e => {
+    setSearchQuery(e.currentTarget.value);
   };
-  state = {
-    searchQuery: '',
-  };
-  getInputData = e => {
-    this.setState({ searchQuery: e.currentTarget.value });
-  };
-  onFormSubmit = e => {
+
+  const onFormSubmit = e => {
     e.preventDefault();
-    if (this.state.searchQuery.trim() === '') {
+    if (searchQuery.trim() === '') {
       Notiflix.Notify.warning('Please, enter something.');
-      // alert('Введите что-то');
       return;
     }
-    this.props.onSubmit(this.state.searchQuery);
-    // this.setState({ searchQuery: '' });
+    onSubmit(searchQuery);
   };
-  render() {
-    return (
-      <SearchHeader>
-        <SearchForm onSubmit={this.onFormSubmit}>
-          <SearchButton type="submit">
-            <SearchButtonLabel>Search</SearchButtonLabel>
-          </SearchButton>
-          <SearchInput
-            type="text"
-            autoComplete="off"
-            autoFocus
-            placeholder="Search images and photos"
-            onChange={this.getInputData}
-            value={this.state.searchQuery}
-          ></SearchInput>
-        </SearchForm>
-      </SearchHeader>
-    );
-  }
-}
+
+  return (
+    <SearchHeader>
+      <SearchForm onSubmit={onFormSubmit}>
+        <SearchButton type="submit">
+          <SearchButtonLabel>Search</SearchButtonLabel>
+        </SearchButton>
+        <SearchInput
+          type="text"
+          autoComplete="off"
+          autoFocus
+          placeholder="Search images and photos"
+          onChange={getInputData}
+          value={searchQuery}
+        ></SearchInput>
+      </SearchForm>
+    </SearchHeader>
+  );
+};
+Searchbar.propTypes = {
+  searchQuery: PropTypes.string,
+  onSubmit: PropTypes.func.isRequired,
+};
