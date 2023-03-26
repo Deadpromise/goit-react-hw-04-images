@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { AppContainer } from './App.styled';
 import { Searchbar } from './Searchbar/Searchbar';
@@ -16,121 +16,106 @@ const Status = {
   REJECTED: 'rejected',
 };
 
-export default class App extends Component {
-  static propTypes = {
-    state: PropTypes.shape({
-      searchQuery: PropTypes.string.isRequired,
-      page: PropTypes.number.isRequired,
-      results: PropTypes.arrayOf(PropTypes.shape({})),
-      status: PropTypes.string,
-      showModal: PropTypes.bool,
-      largeImage: PropTypes.shape({
-        largeImageURL: PropTypes.string.isRequired,
-        largeImageAlt: PropTypes.string.isRequired,
-      }),
-    }),
-  };
-  state = {
-    searchQuery: '',
-    page: 0,
-    results: [],
-    status: Status.IDLE,
-    showModal: false,
-    largeImage: {
-      largeImageURL: '',
-      largeImageAlt: '',
-    },
-  };
-  onFormSubmit = searchQuery => {
-    // this.setState({ status: Status.RESOLVED });
-    if (searchQuery === this.state.searchQuery) {
+export const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const [results, setResults] = useState([]);
+  const [status, setStatus] = useState(Status.IDLE);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImage, setLargeImage] = useState({
+    largeImageURL: '',
+    largeImageAlt: '',
+  });
+
+  const onFormSubmit = inputData => {
+    if (inputData === searchQuery) {
       return;
     }
-    this.setState({ page: 1 });
-    this.setState({ status: Status.PENDING });
-
-    this.setState({ searchQuery });
-  };
-  pageIncr = currentPage => {
-    this.setState({ page: currentPage + 1 });
-  };
-  onLoadMore = () => {
-    this.pageIncr(this.state.page);
-  };
-  closeModal = () => {
-    this.setState({ showModal: false });
+    setResults([]);
+    setPage(1);
+    setSearchQuery(inputData);
+    setStatus(Status.PENDING);
   };
 
-  componentDidUpdate(prevProps, prevState) {
-    const prevQuery = prevState.searchQuery;
-    const currentQuery = this.state.searchQuery;
-    const prevPage = prevState.page;
-    const currentPage = this.state.page;
-    if (prevPage !== currentPage || prevQuery !== currentQuery) {
-      this.setState({ status: Status.PENDING });
-      getImgs(currentQuery, currentPage)
-        .then(result => {
-          if (result.hits.length === 0) {
-            this.setState({ status: Status.REJECTED });
-            Notiflix.Notify.failure(
-              "Sorry, there are no images matching your search query or you've reached the end of search results."
-            );
-            return;
-          }
-          let updatedResults = [];
-          if (prevQuery !== '' && currentQuery !== prevQuery) {
-            updatedResults = [...result.hits];
-          } else {
-            updatedResults = [...this.state.results, ...result.hits];
-          }
-          this.setState({ results: updatedResults, status: Status.RESOLVED });
-        })
-        .catch(() => {
-          this.setState({ status: Status.REJECTED });
-          Notiflix.Notify.failure(
-            "We're sorry, but you've reached the end of search results."
-          );
-        });
+  const pageIncr = currentPage => {
+    setPage(currentPage + 1);
+  };
+
+  const onLoadMore = () => {
+    pageIncr(page);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+  };
+
+  const getBigImage = e => {
+    const goalObj = results.filter(el => el.id === Number(e.target.id));
+    if (goalObj.length === 0) {
+      return;
     }
-  }
-  getBigImage = e => {
-    const goalObj = this.state.results.filter(
-      el => el.id === Number(e.target.id)
-    );
-    console.log(goalObj[0].largeImageURL);
-    this.setState({
-      showModal: true,
-      largeImage: {
-        largeImageURL: goalObj[0].largeImageURL,
-        largeImageAlt: goalObj[0].tags,
-      },
+    setShowModal(true);
+    setLargeImage({
+      largeImageURL: goalObj[0].largeImageURL,
+      largeImageAlt: goalObj[0].tags,
     });
   };
+  useEffect(() => {
+    if (searchQuery === '') {
+      return;
+    }
+    setStatus(Status.PENDING);
+    getImgs(searchQuery, page)
+      .then(result => {
+        if (result.hits.length === 0) {
+          setStatus(Status.REJECTED);
+          Notiflix.Notify.failure(
+            "Sorry, there are no images matching your search query or you've reached the end of search results."
+          );
+          return;
+        }
+        setResults(prevResults => [...prevResults, ...result.hits]);
+        setStatus(Status.RESOLVED);
+      })
+      .catch(() => {
+        setStatus(Status.REJECTED);
+        Notiflix.Notify.failure(
+          "We're sorry, but you've reached the end of search results."
+        );
+      });
+  }, [page, searchQuery]);
 
-  render() {
-    const pending = this.state.status === 'pending';
-    const resolved = this.state.status === 'resolved';
-    const showBtn = this.state.results.length < 12;
-    const { largeImageURL, largeImageAlt } = this.state.largeImage;
-    return (
-      <AppContainer>
-        <Searchbar onSubmit={this.onFormSubmit}></Searchbar>
-        <ImageGallery
-          onClick={this.getBigImage}
-          results={this.state.results}
-        ></ImageGallery>
-        {pending && <Loader></Loader>}
-        {this.state.results.length !== 0 && resolved && !showBtn && (
-          <Button onClick={this.onLoadMore}></Button>
-        )}
-        {this.state.showModal && (
-          <Modal
-            onClose={this.closeModal}
-            imgUrl={largeImageURL}
-            imgAlt={largeImageAlt}
-          ></Modal>
-        )}
-      </AppContainer>
-    );
-  }
-}
+  const pending = status === 'pending';
+  const resolved = status === 'resolved';
+  const showBtn = results.length < 12;
+  const { largeImageURL, largeImageAlt } = largeImage;
+  return (
+    <AppContainer>
+      <Searchbar onSubmit={onFormSubmit}></Searchbar>
+      <ImageGallery onClick={getBigImage} results={results}></ImageGallery>
+      {pending && <Loader></Loader>}
+      {results.length !== 0 && resolved && !showBtn && (
+        <Button onClick={onLoadMore}></Button>
+      )}
+      {showModal && (
+        <Modal
+          onClose={closeModal}
+          imgUrl={largeImageURL}
+          imgAlt={largeImageAlt}
+        ></Modal>
+      )}
+    </AppContainer>
+  );
+};
+
+App.propTypes = {
+  searchQuery: PropTypes.string,
+  page: PropTypes.number,
+  results: PropTypes.arrayOf(PropTypes.shape({})),
+  status: PropTypes.string,
+  showModal: PropTypes.bool,
+  largeImage: PropTypes.shape({
+    largeImageURL: PropTypes.string,
+    largeImageAlt: PropTypes.string,
+  }),
+};
